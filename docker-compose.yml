@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tp_user
+      POSTGRES_PASSWORD: tp_pass
+      POSTGRES_DB: talent_platform
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: tp_redis
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_data:/data
+
+  adminer:
+    image: adminer:latest
+    container_name: tp_adminer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,570 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../../node_modules/.prisma/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  HIRING
+  TALENT
+  SUPERADMIN
+}
+
+enum Portal {
+  HIRING_PORTAL
+  TALENT_PORTAL
+  ADMIN_PORTAL
+}
+
+enum AvailabilityStatus {
+  IMMEDIATE
+  IN_DAYS
+  ALLOCATED
+}
+
+enum WorkModel {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum TalentProfileStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SkillType {
+  PRIMARY
+  SECONDARY
+}
+
+enum ExperienceArea {
+  FRONTEND
+  BACKEND
+  INTEGRATION
+  MIDDLEWARE
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+}
+
+enum EngagementType {
+  CONTRACT
+  MANAGED
+  PAYROLL
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PayModel {
+  UPFRONT
+  PAY_LATER
+}
+
+enum EngagementStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum EarningType {
+  EARNED
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum ApprovalAction {
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+}
+
+enum SettingValueType {
+  NUMBER
+  STRING
+  BOOLEAN
+  JSON
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  email               String    @unique
+  password_hash       String
+  role                Role
+  portal              Portal
+  is_active           Boolean   @default(true)
+  is_verified         Boolean   @default(false)
+  last_login_at       DateTime?
+  refresh_token_hash  String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  talent_profile      TalentProfile?     @relation("TalentOwner")
+  hirer_profile       HirerProfile?      @relation("HirerOwner")
+  approved_profiles   TalentProfile[]    @relation("ApprovedBy")
+  wishlists           Wishlist[]
+  wishlist_adds       WishlistAdd[]      @relation("AddedBy")
+  cart                Cart?
+  orders              Order[]
+  profile_views       ProfileView[]      @relation("ViewerUser")
+  approval_logs       ApprovalLog[]      @relation("ReviewedBy")
+  platform_settings   PlatformSetting[]  @relation("UpdatedBy")
+  coupons             Coupon[]           @relation("CreatedBy")
+  admin_audit_logs    AdminAuditLog[]    @relation("AdminUser")
+  client_engagements  TalentEngagement[] @relation("ClientUser")
+  timesheet_approvals Timesheet[]        @relation("ApprovedBy")
+
+  @@map("users")
+}
+
+model TalentProfile {
+  id                   String              @id @default(uuid())
+  user_id              String              @unique
+  full_name            String
+  title                String?
+  bio                  String?
+  avatar_url           String?
+  country_code         String?
+  location_city        String?
+  years_experience     Int?
+  bill_rate_hourly     Decimal?            @db.Decimal(10, 2)
+  bill_rate_weekly     Decimal?            @db.Decimal(10, 2)
+  availability         AvailabilityStatus  @default(IMMEDIATE)
+  notice_period_days   Int?
+  work_model           WorkModel           @default(REMOTE)
+  phone                String?
+  linkedin_url         String?
+  github_url           String?
+  portfolio_url        String?
+  resume_url           String?
+  timezone             String?
+  us_overlap_hours     Float?
+  leetcode_url         String?
+  ai_match_score       Float?
+  vetted_tier          String?
+  profile_score        Int?
+  status               TalentProfileStatus @default(DRAFT)
+  is_listed            Boolean             @default(false)
+  submitted_at         DateTime?
+  approved_at          DateTime?
+  approved_by          String?
+  created_at           DateTime            @default(now())
+  updated_at           DateTime            @updatedAt
+  business_categories  String[]            @default([])
+  role_types           String[]            @default([])
+  delivery_models      String[]            @default([])
+  customer_rating      Float?
+  rating_count         Int                 @default(0)
+  urgency_expires_at   DateTime?
+
+  user                 User                @relation("TalentOwner", fields: [user_id], references: [id], onDelete: Cascade)
+  approver             User?               @relation("ApprovedBy", fields: [approved_by], references: [id])
+  skills               TalentSkill[]
+  badges               TalentBadge[]
+  previous_companies   TalentPreviousCompany[]
+  projects             TalentProject[]
+  skill_proficiencies  TalentSkillProficiency[]
+  experience_snapshots TalentExperienceSnapshot[]
+  wishlists            Wishlist[]
+  wishlist_adds        WishlistAdd[]
+  cart_items           CartItem[]
+  order_items          OrderItem[]
+  engagements          TalentEngagement[]  @relation("TalentEngaged")
+  timesheets           Timesheet[]         @relation("TalentTimesheet")
+  earnings             TalentEarning[]
+  invoices             Invoice[]
+  profile_views        ProfileView[]       @relation("ViewedTalent")
+  approval_logs        ApprovalLog[]
+  agreements           TalentAgreement[]
+
+  @@index([status, is_listed])
+  @@index([country_code])
+  @@index([availability])
+  @@index([work_model])
+  @@index([ai_match_score(sort: Desc)])
+  @@index([bill_rate_hourly(sort: Desc)])
+  @@index([customer_rating(sort: Desc)])
+  @@index([years_experience(sort: Desc)])
+  @@map("talent_profiles")
+}
+
+model TalentSkill {
+  id         String    @id @default(uuid())
+  talent_id  String
+  skill_name String
+  skill_type SkillType @default(PRIMARY)
+  category   String?
+  talent     TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_skills")
+}
+
+model TalentBadge {
+  id          String @id @default(uuid())
+  talent_id   String
+  badge_type  String
+  badge_label String
+  talent      TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_badges")
+}
+
+model TalentPreviousCompany {
+  id           String  @id @default(uuid())
+  talent_id    String
+  company_name String
+  is_featured  Boolean @default(false)
+  talent       TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_previous_companies")
+}
+
+model TalentProject {
+  id               String   @id @default(uuid())
+  talent_id        String
+  title            String
+  description      String?
+  impact_statement String?
+  tech_tags        String[]
+  github_url       String?
+  live_demo_url    String?
+  sort_order       Int      @default(0)
+  talent           TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_projects")
+}
+
+model TalentSkillProficiency {
+  id             String @id @default(uuid())
+  talent_id      String
+  category_label String
+  score          Int
+  sort_order     Int    @default(0)
+  talent         TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_skill_proficiency")
+}
+
+model TalentExperienceSnapshot {
+  id        String         @id @default(uuid())
+  talent_id String
+  area      ExperienceArea
+  tech_list String[]
+  talent    TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_experience_snapshot")
+}
+
+model Wishlist {
+  id         String   @id @default(uuid())
+  user_id    String
+  talent_id  String
+  created_at DateTime @default(now())
+  user       User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  talent     TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@unique([user_id, talent_id])
+  @@map("wishlists")
+}
+
+model WishlistAdd {
+  id         String   @id @default(uuid())
+  talent_id  String
+  added_by   String
+  added_at   DateTime @default(now())
+  talent     TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  adder      User          @relation("AddedBy", fields: [added_by], references: [id], onDelete: Cascade)
+  @@map("wishlist_adds")
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  user_id    String     @unique
+  status     CartStatus @default(ACTIVE)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  orders     Order[]
+  @@map("carts")
+}
+
+model CartItem {
+  id                 String  @id @default(uuid())
+  cart_id            String
+  talent_id          String
+  hours_per_week     Int
+  duration_weeks     Int
+  bill_rate_snapshot Decimal @db.Decimal(10, 2)
+  total_cost         Decimal @db.Decimal(10, 2)
+  cart               Cart          @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  talent             TalentProfile @relation(fields: [talent_id], references: [id])
+  @@unique([cart_id, talent_id])
+  @@map("cart_items")
+}
+
+model Order {
+  id              String         @id @default(uuid())
+  user_id         String
+  cart_id         String
+  company_name    String
+  gst_number      String?
+  billing_address Json
+  contact_person  Json
+  engagement_type EngagementType
+  subtotal        Decimal        @db.Decimal(10, 2)
+  platform_fee    Decimal        @db.Decimal(10, 2)
+  total_payable   Decimal        @db.Decimal(10, 2)
+  coupon_code     String?
+  discount_amount Decimal?       @db.Decimal(10, 2)
+  status          OrderStatus    @default(PENDING)
+  created_at      DateTime       @default(now())
+  user            User        @relation(fields: [user_id], references: [id])
+  cart            Cart        @relation(fields: [cart_id], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  order_id       String
+  talent_id      String
+  hours_per_week Int
+  duration_weeks Int
+  bill_rate      Decimal @db.Decimal(10, 2)
+  total_cost     Decimal @db.Decimal(10, 2)
+  order          Order         @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  talent         TalentProfile @relation(fields: [talent_id], references: [id])
+  engagement     TalentEngagement?
+  @@map("order_items")
+}
+
+model Payment {
+  id                       String        @id @default(uuid())
+  order_id                 String        @unique
+  stripe_payment_intent_id String        @unique
+  stripe_customer_id       String?
+  amount                   Decimal       @db.Decimal(10, 2)
+  currency                 String        @default("INR")
+  status                   PaymentStatus @default(PENDING)
+  pay_model                PayModel      @default(UPFRONT)
+  stripe_event_id          String?
+  metadata                 Json?
+  paid_at                  DateTime?
+  order                    Order         @relation(fields: [order_id], references: [id])
+  @@map("payments")
+}
+
+model TalentEngagement {
+  id                  String           @id @default(uuid())
+  order_item_id       String           @unique
+  talent_id           String
+  client_user_id      String
+  client_company_name String
+  project_title       String
+  start_date          DateTime
+  end_date            DateTime?
+  hours_per_week      Int
+  agreed_rate         Decimal          @db.Decimal(10, 2)
+  progress_pct        Int              @default(0)
+  status              EngagementStatus @default(ACTIVE)
+  sow_url             String?
+  created_at          DateTime         @default(now())
+  order_item          OrderItem        @relation(fields: [order_item_id], references: [id])
+  talent              TalentProfile    @relation("TalentEngaged", fields: [talent_id], references: [id])
+  client              User             @relation("ClientUser", fields: [client_user_id], references: [id])
+  timesheets          Timesheet[]
+  earnings            TalentEarning[]
+  invoices            Invoice[]
+  @@map("talent_engagements")
+}
+
+model Timesheet {
+  id               String          @id @default(uuid())
+  engagement_id    String
+  talent_id        String
+  week_start_date  DateTime
+  hours_logged     Decimal         @db.Decimal(6, 2)
+  description      String?
+  status           TimesheetStatus @default(DRAFT)
+  submitted_at     DateTime?
+  approved_by      String?
+  approved_at      DateTime?
+  rejection_reason String?
+  engagement       TalentEngagement @relation(fields: [engagement_id], references: [id], onDelete: Cascade)
+  talent           TalentProfile    @relation("TalentTimesheet", fields: [talent_id], references: [id])
+  approver         User?            @relation("ApprovedBy", fields: [approved_by], references: [id])
+  earnings         TalentEarning[]
+  @@unique([engagement_id, week_start_date])
+  @@map("timesheets")
+}
+
+model TalentEarning {
+  id            String      @id @default(uuid())
+  talent_id     String
+  timesheet_id  String?
+  engagement_id String
+  amount        Decimal     @db.Decimal(10, 2)
+  type          EarningType @default(PENDING)
+  period_start  DateTime
+  period_end    DateTime
+  payout_at     DateTime?
+  created_at    DateTime    @default(now())
+  talent        TalentProfile    @relation(fields: [talent_id], references: [id])
+  timesheet     Timesheet?       @relation(fields: [timesheet_id], references: [id])
+  engagement    TalentEngagement @relation(fields: [engagement_id], references: [id])
+  @@map("talent_earnings")
+}
+
+model Invoice {
+  id             String   @id @default(uuid())
+  engagement_id  String
+  talent_id      String
+  invoice_number String   @unique
+  amount         Decimal  @db.Decimal(10, 2)
+  hours_billed   Decimal  @db.Decimal(6, 2)
+  period_start   DateTime
+  period_end     DateTime
+  pdf_url        String?
+  client_review  String?
+  client_rating  Int?
+  issued_at      DateTime @default(now())
+  engagement     TalentEngagement @relation(fields: [engagement_id], references: [id])
+  talent         TalentProfile    @relation(fields: [talent_id], references: [id])
+  @@unique([engagement_id, period_start])
+  @@map("invoices")
+}
+
+model ProfileView {
+  id             String   @id @default(uuid())
+  talent_id      String
+  viewer_user_id String?
+  viewer_company String?
+  source         String?
+  viewed_at      DateTime @default(now())
+  talent         TalentProfile @relation("ViewedTalent", fields: [talent_id], references: [id], onDelete: Cascade)
+  viewer         User?         @relation("ViewerUser", fields: [viewer_user_id], references: [id])
+  @@map("profile_views")
+}
+
+model ApprovalLog {
+  id          String         @id @default(uuid())
+  talent_id   String
+  reviewed_by String
+  action      ApprovalAction
+  notes       String?
+  created_at  DateTime       @default(now())
+  talent      TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  reviewer    User          @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+  @@map("approval_logs")
+}
+
+model PlatformSetting {
+  key         String           @id
+  value       String
+  value_type  SettingValueType @default(STRING)
+  description String?
+  updated_by  String?
+  updated_at  DateTime         @updatedAt
+  updater     User?            @relation("UpdatedBy", fields: [updated_by], references: [id])
+  @@map("platform_settings")
+}
+
+model Coupon {
+  id             String       @id @default(uuid())
+  code           String       @unique
+  discount_type  DiscountType
+  discount_value Decimal      @db.Decimal(10, 2)
+  max_uses       Int?
+  used_count     Int          @default(0)
+  expires_at     DateTime?
+  is_active      Boolean      @default(true)
+  created_by     String
+  created_at     DateTime     @default(now())
+  creator        User         @relation("CreatedBy", fields: [created_by], references: [id])
+  @@map("coupons")
+}
+
+model AdminAuditLog {
+  id            String   @id @default(uuid())
+  admin_user_id String
+  action        String
+  entity_type   String
+  entity_id     String?
+  before_state  Json?
+  after_state   Json?
+  ip_address    String?
+  created_at    DateTime @default(now())
+  admin_user    User     @relation("AdminUser", fields: [admin_user_id], references: [id])
+  @@map("admin_audit_logs")
+}
+
+model TaxonomySkill {
+  id          String  @id @default(uuid())
+  category    String
+  module_name String
+  is_active   Boolean @default(true)
+  sort_order  Int     @default(0)
+  @@map("taxonomy_skills")
+}
+
+model TaxonomyBadge {
+  id        String  @id @default(uuid())
+  badge_key String  @unique
+  label     String
+  is_active Boolean @default(true)
+  @@map("taxonomy_badges")
+}
+
+model TalentAgreement {
+  id            String   @id @default(uuid())
+  talent_id     String
+  agreed_at     DateTime
+  terms_version String
+  created_at    DateTime @default(now())
+  talent        TalentProfile @relation(fields: [talent_id], references: [id], onDelete: Cascade)
+  @@map("talent_agreements")
+}
+
+model HirerProfile {
+  id                  String   @id @default(uuid())
+  user_id             String   @unique
+  company_name        String?
+  phone               String?
+  company_size        String?
+  industry            String?
+  website             String?
+  company_description String?
+  location            String?
+  logo_url            String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  user                User @relation("HirerOwner", fields: [user_id], references: [id], onDelete: Cascade)
+  @@map("hirer_profiles")
+}
