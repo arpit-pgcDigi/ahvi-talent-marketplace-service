@@ -31,9 +31,9 @@ import { CurrentUser, UserPayload } from '@app/common';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { SERVICE_TOKENS } from '../../config/clients.config';
 import {
-  CreateProfileRequestDto,
+  CreateProfileDto as CreateProfileRequestDto,
   TalentProfileResponseDto,
-} from './dto/talent-gateway.dto';
+} from '@app/contracts';
 
 const UnauthorizedSchema = {
   schema: {
@@ -102,7 +102,7 @@ const InternalErrorSchema = {
 export class TalentController {
   constructor(
     @Inject(SERVICE_TOKENS.TALENT) private readonly talentClient: ClientProxy,
-  ) {}
+  ) { }
 
   @Post('profile')
   @HttpCode(HttpStatus.CREATED)
@@ -139,7 +139,7 @@ export class TalentController {
     description: 'Unexpected server error',
   })
   createProfile(
-    @Body() body: CreateProfileRequestDto,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+    @Body() body: Record<string, unknown>,
     @CurrentUser() user: UserPayload,
   ) {
     return firstValueFrom(

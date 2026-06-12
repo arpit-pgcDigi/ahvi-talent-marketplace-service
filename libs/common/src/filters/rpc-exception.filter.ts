@@ -3,14 +3,10 @@ import {
   ArgumentsHost,
   HttpStatus,
   Logger,
+  HttpException,
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 
-// Why this exists:
-// When a microservice throws RpcException, it travels back
-// to the api-gateway as a raw error object. Without this filter,
-// the gateway returns a 500 with an unhelpful message.
-// This filter converts it to the correct HTTP status + message.
 @Catch()
 export class AllExceptionsFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -22,24 +18,40 @@ export class AllExceptionsFilter {
     }>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    let message: string | string[] = 'Internal server error';
 
     if (exception instanceof RpcException) {
       const err = exception.getError();
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'statusCode' in err
-      ) {
-        const e = err as { statusCode: number; message: string };
-        status = e.statusCode;
-        message = e.message;
+
+      if (err instanceof HttpException) {
+        // RpcException wrapping an HttpException — extract correctly
+        status = err.getStatus();
+        const errResponse = err.getResponse();
+        message =
+          typeof errResponse === 'object' && errResponse !== null && 'message' in errResponse
+            ? (errResponse as { message: string | string[] }).message
+            : err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        const e = err as { statusCode?: number; status?: number; message?: string };
+        status = e.statusCode ?? e.status ?? HttpStatus.INTERNAL_SERVER_ERROR;
+        message = e.message ?? 'Internal server error';
+      } else if (typeof err === 'string') {
+        message = err;
       }
+    } else if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const errResponse = exception.getResponse();
+      message =
+        typeof errResponse === 'object' && errResponse !== null && 'message' in errResponse
+          ? (errResponse as { message: string | string[] }).message
+          : exception.message;
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // Never expose raw error messages to clients — log server side only
+      this.logger.error(`Unhandled error: ${exception.stack}`);
+      message = 'Internal server error';
     }
 
-    this.logger.error(`HTTP ${status}: ${message}`);
+    this.logger.error(`HTTP ${status}: ${JSON.stringify(message)}`);
 
     response.status(status).json({
       statusCode: status,

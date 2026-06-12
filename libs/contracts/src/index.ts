@@ -6,3 +6,8 @@ export * from './patterns/index';
 // Events — async fire-and-forget
 export * from './events/talent.events';
 export * from './events/order.events';
+
+// DTOs — single source of truth for all request/response shapes
+export * from './dto/auth/index';
+export * from './dto/talent/index';
+export * from './dto/shared/index';
