@@ -17,3 +17,5 @@ export * from './interceptors/logging.interceptor';
 
 
 export * from './interceptors/response-envelope.interceptor';
+
+export * from './interceptors/rpc-exception.interceptor';

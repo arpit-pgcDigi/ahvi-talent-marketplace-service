@@ -4,6 +4,7 @@ dotenv.config();
 import { NestFactory } from '@nestjs/core';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { RpcExceptionInterceptor } from '@app/common';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
@@ -34,6 +35,11 @@ async function bootstrap(): Promise<void> {
       transform: true,
     }),
   );
+
+  // Catches plain HttpExceptions and wraps them as RpcExceptions
+  // Services now throw ConflictException, NotFoundException etc. directly
+  // No more manual: throw new RpcException(new ConflictException(...))
+  app.useGlobalInterceptors(new RpcExceptionInterceptor());
 
   app.enableShutdownHooks();
   await app.listen();

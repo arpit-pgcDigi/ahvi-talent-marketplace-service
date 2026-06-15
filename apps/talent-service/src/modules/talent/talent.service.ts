@@ -3,10 +3,10 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
 import { TalentRepository } from './talent.repository';
 import { CreateProfileDto, GetProfileDto } from './dto/talent.dto';
 
+// RpcException removed — RpcExceptionInterceptor handles wrapping automatically
 @Injectable()
 export class TalentService {
   constructor(private readonly talentRepository: TalentRepository) {}
@@ -14,9 +14,7 @@ export class TalentService {
   async createProfile(dto: CreateProfileDto) {
     const existing = await this.talentRepository.findByUserId(dto.user_id);
     if (existing) {
-      throw new RpcException(
-        new ConflictException('A profile already exists for this user'),
-      );
+      throw new ConflictException('A profile already exists for this user');
     }
 
     const { user_id, ...rest } = dto;
@@ -26,9 +24,7 @@ export class TalentService {
   async getProfile(dto: GetProfileDto) {
     const profile = await this.talentRepository.findById(dto.talent_id);
     if (!profile) {
-      throw new RpcException(
-        new NotFoundException(`Talent profile not found: ${dto.talent_id}`),
-      );
+      throw new NotFoundException(`Talent profile not found: ${dto.talent_id}`);
     }
     return profile;
   }
