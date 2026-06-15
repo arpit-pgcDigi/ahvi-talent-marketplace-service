@@ -14,3 +14,6 @@ export * from './filters/rpc-exception.filter';
 
 // Interceptors
 export * from './interceptors/logging.interceptor';
+
+
+export * from './interceptors/response-envelope.interceptor';

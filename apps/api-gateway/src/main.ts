@@ -5,7 +5,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { AllExceptionsFilter, LoggingInterceptor, RolesGuard } from '@app/common';
+import { AllExceptionsFilter, LoggingInterceptor, RolesGuard, ResponseEnvelopeInterceptor } from '@app/common';
 import { setupSwagger } from './config/swagger.config';
 
 async function bootstrap(): Promise<void> {
@@ -44,7 +44,10 @@ async function bootstrap(): Promise<void> {
       transform: true,
     }),
   );
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalInterceptors(
+    new LoggingInterceptor(),
+    new ResponseEnvelopeInterceptor(),
+  );
   app.useGlobalGuards(new RolesGuard(app.get(Reflector)));
   app.setGlobalPrefix('api/v1');
 
