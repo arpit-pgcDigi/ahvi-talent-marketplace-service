@@ -8,6 +8,7 @@ import { AuthController } from './modules/auth/auth.controller';
 import { TalentController } from './modules/talent/talent.controller';
 import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AdminController } from './modules/admin/admin.controller';
 import { RolesGuard } from '@app/common';
 
 @Module({
@@ -35,6 +36,7 @@ import { RolesGuard } from '@app/common';
     HealthController,
     AuthController,
     TalentController,
+    AdminController,
   ],
   providers: [
     // Guard order matters:
