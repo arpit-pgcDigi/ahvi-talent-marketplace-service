@@ -3,20 +3,28 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { AdminRepository } from './admin.repository';
 import {
   ApproveTalentDto,
   RejectTalentDto,
   BanUserDto,
   UpdateSettingDto,
+  TALENT_EVENTS,
+  TalentApprovedEvent,
+  TalentRejectedEvent,
 } from '@app/contracts';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly adminRepository: AdminRepository) {}
+  constructor(
+    private readonly adminRepository: AdminRepository,
+    @Inject('EVENT_BUS') private readonly eventBus: ClientProxy,
+  ) {}
 
   async listPendingProfiles(page: number, limit: number) {
     const skip = (page - 1) * limit;
@@ -53,10 +61,21 @@ export class AdminService {
       notes: dto.notes,
     });
 
-    this.logger.log(`Talent approved: ${dto.talent_id} by admin: ${dto.admin_id}`);
+    // Get user email for notification
+    const user = await this.adminRepository.findUserById(talent.user_id);
 
-    // TODO: emit TALENT_APPROVED event for notification-service
-    // this.eventClient.emit(TALENT_EVENTS.APPROVED, { ... })
+    // Emit async event — notification-service listens to this
+    // Fire and forget — admin doesn't wait for email to send
+    const event: TalentApprovedEvent = {
+      talent_id: dto.talent_id,
+      user_id: talent.user_id,
+      email: user?.email ?? '',
+      full_name: talent.full_name,
+      approved_by: dto.admin_id,
+      approved_at: new Date(),
+    };
+    this.eventBus.emit(TALENT_EVENTS.APPROVED, event);
+    this.logger.log(`Talent approved: ${dto.talent_id} — event emitted`);
 
     return updated;
   }
@@ -77,7 +96,18 @@ export class AdminService {
       notes: dto.reason,
     });
 
-    this.logger.log(`Talent rejected: ${dto.talent_id} by admin: ${dto.admin_id}`);
+    const user = await this.adminRepository.findUserById(talent.user_id);
+
+    const event: TalentRejectedEvent = {
+      talent_id: dto.talent_id,
+      user_id: talent.user_id,
+      email: user?.email ?? '',
+      full_name: talent.full_name,
+      rejected_by: dto.admin_id,
+      reason: dto.reason,
+    };
+    this.eventBus.emit(TALENT_EVENTS.REJECTED, event);
+    this.logger.log(`Talent rejected: ${dto.talent_id} — event emitted`);
 
     return updated;
   }
@@ -99,10 +129,8 @@ export class AdminService {
     const user = await this.adminRepository.findUserById(dto.user_id);
     if (!user) throw new NotFoundException(`User not found: ${dto.user_id}`);
     if (!user.is_active) throw new BadRequestException('User is already banned');
-
     await this.adminRepository.banUser(dto.user_id);
-    this.logger.log(`User banned: ${dto.user_id} by admin: ${dto.admin_id} — ${dto.reason}`);
-
+    this.logger.log(`User banned: ${dto.user_id} by admin: ${dto.admin_id}`);
     return { message: 'User banned successfully', user_id: dto.user_id };
   }
 
