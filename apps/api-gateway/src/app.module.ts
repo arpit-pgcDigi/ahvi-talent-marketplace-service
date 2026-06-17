@@ -6,30 +6,19 @@ import { APP_GUARD } from '@nestjs/core';
 import { clientsConfig } from './config/clients.config';
 import { AuthController } from './modules/auth/auth.controller';
 import { TalentController } from './modules/talent/talent.controller';
+import { AdminController } from './modules/admin/admin.controller';
+import { MarketplaceController } from './modules/marketplace/marketplace.controller';
 import { HealthController } from './health.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { AdminController } from './modules/admin/admin.controller';
 import { RolesGuard } from '@app/common';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ClientsModule.register(clientsConfig),
-
-    // ── Rate limiting ────────────────────────────────────────────────────
-    // Global default: 100 requests per 60 seconds per IP
-    // Auth endpoints override this with much stricter limits (see controllers)
     ThrottlerModule.forRoot([
-      {
-        name: 'global',
-        ttl: 60000,   // 60 seconds window
-        limit: 100,   // 100 requests per window
-      },
-      {
-        name: 'auth',
-        ttl: 60000,   // 60 seconds window
-        limit: 10,    // 10 requests per window — for login/register
-      },
+      { name: 'global', ttl: 60000, limit: 100 },
+      { name: 'auth', ttl: 60000, limit: 10 },
     ]),
   ],
   controllers: [
@@ -37,25 +26,13 @@ import { RolesGuard } from '@app/common';
     AuthController,
     TalentController,
     AdminController,
+    MarketplaceController,
   ],
   providers: [
-    // Guard order matters:
-    // 1. ThrottlerGuard  — reject if rate limit exceeded
-    // 2. JwtAuthGuard    — verify identity
-    // 3. RolesGuard      — verify permissions
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
-    {
-      provide: APP_GUARD,
-      useClass: RolesGuard,
-    },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
     JwtAuthGuard,
   ],
 })
-export class AppModule {}
+export class AppModule { }

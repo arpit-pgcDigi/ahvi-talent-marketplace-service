@@ -12,3 +12,4 @@ export * from './dto/auth/index';
 export * from './dto/talent/index';
 export * from './dto/shared/index';
 export * from './dto/admin/index';
+export * from './dto/marketplace/index';

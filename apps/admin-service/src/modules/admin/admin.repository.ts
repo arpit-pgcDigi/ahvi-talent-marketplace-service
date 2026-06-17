@@ -4,7 +4,7 @@ import { TalentProfile, TalentProfileStatus, ApprovalAction } from '@prisma/clie
 
 @Injectable()
 export class AdminRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findPendingProfiles(skip: number, take: number): Promise<{
     data: TalentProfile[];
@@ -36,15 +36,20 @@ export class AdminRepository {
   }
 
   async updateTalentStatus(
-    talentId: string,
-    status: TalentProfileStatus,
-    extra?: { approved_by?: string; approved_at?: Date },
-  ): Promise<TalentProfile> {
-    return this.prisma.talentProfile.update({
-      where: { id: talentId },
-      data: { status, ...extra },
-    });
-  }
+  talentId: string,
+  status: TalentProfileStatus,
+  extra?: { approved_by?: string; approved_at?: Date },
+): Promise<TalentProfile> {
+  const isApproved = status === 'APPROVED';
+  return this.prisma.talentProfile.update({
+    where: { id: talentId },
+    data: {
+      status,
+      is_listed: isApproved ? true : false,
+      ...extra,
+    },
+  });
+}
 
   async createApprovalLog(data: {
     talent_id: string;
